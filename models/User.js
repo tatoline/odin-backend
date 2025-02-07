@@ -8,7 +8,12 @@ const userSchema = new mongoose.Schema({
     password: { type: String, required: true },
     country: { type: String, required: true },
     gender: { type: String, required: true },
-    birthday: { type: Date, required: true }
+    birthday: { type: Date, required: true },
+    theme: { 
+        type: String, 
+        enum: ['dark', 'light'], // Restrict values to only 'dark' or 'light' since only two themes available
+        default: 'dark'
+    }
 })
 
 // Extend the base schema (adds deletedAt & deletedBy)
