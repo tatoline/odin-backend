@@ -41,10 +41,6 @@ exports.login = async (req, res) => {
         const { email, password } = req.body
         const loggedUser = await userService.login(email, password)
 
-        if (!loggedUser) {
-            return res.status(401).json({ error: 'Invalid credentials.' })
-        }
-
         // Remove password before sending response
         const { password: _, ...userWithoutPassword } = loggedUser.toObject()
 
