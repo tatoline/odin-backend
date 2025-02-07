@@ -18,4 +18,14 @@ router.post('/createUser',
     userController.createUser
 )
 
+router.post('/login',
+    [
+        body('email').isEmail().withMessage('Enter a valid e-mail.'),
+        body('password')
+            .notEmpty().withMessage('Enter your password.')
+            .isLength({ min: 8 }).withMessage('Password must be at least 8 characters.')
+     ],
+     userController.login
+)
+
 module.exports = router
