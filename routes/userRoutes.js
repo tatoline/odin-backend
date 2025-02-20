@@ -2,6 +2,7 @@ const express = require('express')
 const userController = require('../controllers/userController')
 const router = express.Router()
 const { body, validationResult } = require('express-validator')
+const protectRoute = require('../middlewares/authMiddleware')
 
 router.post('/isEmailExist', userController.checkEmailExistence)
 
@@ -27,5 +28,6 @@ router.post('/login',
      ],
      userController.login
 )
+
 
 module.exports = router
