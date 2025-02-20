@@ -13,7 +13,8 @@ const userSchema = new mongoose.Schema({
         type: String, 
         enum: ['dark', 'light'], // Restrict values to only 'dark' or 'light' since only two themes available
         default: 'dark'
-    }
+    },
+    refreshToken: { type: String, default: null } // Stores refresh token for authentication
 })
 
 // Extend the base schema (adds deletedAt & deletedBy)

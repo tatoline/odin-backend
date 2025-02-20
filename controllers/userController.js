@@ -1,6 +1,7 @@
 const userService = require('../services/userService')
 const { validationResult } = require('express-validator')
 
+
 exports.checkEmailExistence = async (req, res) => {
     try {
         const { email } = req.body
@@ -18,6 +19,7 @@ exports.checkEmailExistence = async (req, res) => {
     }
 }
 
+
 exports.createUser = async (req, res) => {
     try {
         const newUser = await userService.createUser(req.body)
@@ -31,6 +33,7 @@ exports.createUser = async (req, res) => {
     }
 }
 
+
 exports.login = async (req, res) => {
     const errors = validationResult(req)
     if (!errors.isEmpty()) {
@@ -38,17 +41,70 @@ exports.login = async (req, res) => {
     }
 
     try {
-        const { email, password } = req.body
-        const loggedUser = await userService.login(email, password)
+        const { email, password, rememberMe } = req.body
 
-        // Remove password before sending response
-        const { password: _, ...userWithoutPassword } = loggedUser.toObject()
+        // userService removes the password before sending response
+        const { loggedUserWithoutPassword, accessToken, refreshToken } = await userService.login({ email, password, rememberMe })
 
-        res.status(200).json(userWithoutPassword)
+        if (refreshToken) {
+            res.cookie('refreshToken', refreshToken, {
+                httpOnly: true, // Prevents XSS attacks
+                secure: process.env.NODE_ENV === 'production',
+                sameSite: 'Strict',
+                maxAge: 365 * 24 * 60 * 60 * 1000 // 1 year
+            })
+        }
+
+        res.status(200).json({loggedUserWithoutPassword, accessToken}) // Send user & access token
 
     } catch(error) {
         console.error('User login error:', error.message)
       
         res.status(error.statusCode || 500).json({ error: error.message })
+    }
+}
+
+
+exports.refreshAccessToken = async (req, res) => {
+    try {
+        const oldRefreshToken = req.cookies.refreshToken
+        if (!oldRefreshToken) {
+            return res.status(401).json({ error: 'No refresh token provided.' })
+        }
+
+        // Find user by refresh token
+        const user = await User.findOne({ refreshToken: oldRefreshToken })
+        if (!user) {
+            return res.status(401).json({ error: 'Invalid refresh token.' })
+        }
+
+        // Verify the refresh token
+        jwt.verify(oldRefreshToken, process.env.JWT_REFRESH_SECRET, async (err, decoded) => {
+            if (err) {
+                return res.status(401).json({ error: 'Invalid refresh token.' })
+            }
+
+            // Generate new tokens
+            const newAccessToken = generateAccessToken(decoded.userId)
+            const newRefreshToken = generateRefreshToken(decoded.userId)
+
+            // Update refresh token in DB
+            user.refreshToken = newRefreshToken
+            await user.save()
+
+            // Set new refresh token in HTTP-Only cookie
+            res.cookie('refreshToken', newRefreshToken, {
+                httpOnly: true,
+                secure: process.env.NODE_ENV === 'production',
+                sameSite: 'Strict',
+                maxAge: 365 * 24 * 60 * 60 * 1000 // 1 year
+            })
+
+            res.status(200).json({ accessToken: newAccessToken })
+        })
+
+    } catch (error) {
+        console.error('Error refreshing access token:', error.message)
+        res.status(500).json({ error: 'An unexpected error occurred.' })
     }
 }
